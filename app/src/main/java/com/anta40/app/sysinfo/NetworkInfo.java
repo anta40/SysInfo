@@ -79,7 +79,7 @@ public class NetworkInfo {
     public static String getCellMode(Context ctxt){
         TelephonyManager tm = (TelephonyManager) ctxt.getSystemService(Context.TELEPHONY_SERVICE);
 
-        String res = "";
+        String res = "Not available";
 
         if ((tm.getNetworkType() == TelephonyManager.NETWORK_TYPE_HSDPA)) {
             res="3G";

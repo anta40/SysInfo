@@ -3,6 +3,7 @@ package com.anta40.app.sysinfo;
 import android.Manifest;
 import android.app.Activity;
 import android.app.ActivityManager;
+import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothClass;
 import android.content.Context;
 import android.content.Intent;
@@ -10,6 +11,8 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Point;
 import android.media.AudioManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.nfc.NfcAdapter;
@@ -129,11 +132,38 @@ public class DeviceHardwareInfo {
         }
         //str += "\nIMEI: "+getUniqueIMEIId(ctxt);
 
-        str += "\nWifi component: Yes";
-        str += "\nData component: Yes";
-        str += "\nGPS component: Yes";
-        str += "\nPhone component: Yes";
-        str += "\nBluetooth component: Yes";
+        String wifiStatus = "";
+        if(ctxt.getSystemService(Context.WIFI_SERVICE) == null) {
+            wifiStatus = "Not supported";
+        }
+        else {
+            wifiStatus = "Supported";
+        }
+        str += "\nWifi component: "+wifiStatus;
+
+        ConnectivityManager connManager = (ConnectivityManager) ctxt.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo mobile = connManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
+        String dataStatus = "Not connected";
+
+        if( mobile.isAvailable() && mobile.getDetailedState() == NetworkInfo.DetailedState.CONNECTED ){
+            dataStatus = "Connected";
+        }
+        str += "\nData component: "+dataStatus;
+
+        PackageManager packageManager = ctxt.getPackageManager();
+        boolean hasGPS = packageManager.hasSystemFeature(PackageManager.FEATURE_LOCATION_GPS);
+        str += "\nGPS component: "+hasGPS;
+        str += "\nPhone component: ";
+
+        BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        String bluetoothStatus = "";
+        if (bluetoothAdapter == null){
+            bluetoothStatus = "Not supported";
+        }
+        else {
+            bluetoothStatus = "Supported";
+        }
+        str += "\nBluetooth component: "+bluetoothStatus;
         str += "\nEarphone component: "+am.isWiredHeadsetOn();
 
         NfcAdapter mNfcAdapter;
