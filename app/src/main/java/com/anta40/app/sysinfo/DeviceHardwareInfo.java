@@ -150,11 +150,20 @@ public class DeviceHardwareInfo {
         }
         str += "\nData component: "+dataStatus;
 
+        // GPS
         PackageManager packageManager = ctxt.getPackageManager();
         boolean hasGPS = packageManager.hasSystemFeature(PackageManager.FEATURE_LOCATION_GPS);
         str += "\nGPS component: "+hasGPS;
-        str += "\nPhone component: ";
 
+        // Phone
+        PackageManager pm = ctxt.getPackageManager();
+        String phoneStatus = "Not supported";
+        if (pm.hasSystemFeature(PackageManager.FEATURE_TELEPHONY)){
+            phoneStatus = "Supported";
+        }
+        str += "\nPhone component: "+phoneStatus;
+
+        // Bluetooth
         BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         String bluetoothStatus = "";
         if (bluetoothAdapter == null){
@@ -164,8 +173,11 @@ public class DeviceHardwareInfo {
             bluetoothStatus = "Supported";
         }
         str += "\nBluetooth component: "+bluetoothStatus;
+
+        // Earphone
         str += "\nEarphone component: "+am.isWiredHeadsetOn();
 
+        // NFC
         NfcAdapter mNfcAdapter;
         String nfcStatus = "";
 
@@ -191,16 +203,7 @@ public class DeviceHardwareInfo {
         return str;
     }
 
-    private long freeRamMemorySize() {
-        ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
-        ActivityManager activityManager = (ActivityManager) ctxt.getSystemService(ACTIVITY_SERVICE);
-        activityManager.getMemoryInfo(mi);
-        long availableMegs = mi.availMem / 1048576L;
-
-        return availableMegs;
-    }
-
-    private boolean isRunningOnEmulator() {
+     private boolean isRunningOnEmulator() {
         boolean result =
                 Build.FINGERPRINT.startsWith("generic")//
                         ||Build.FINGERPRINT.startsWith("unknown")//
