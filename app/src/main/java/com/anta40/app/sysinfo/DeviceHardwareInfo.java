@@ -1,6 +1,7 @@
 package com.anta40.app.sysinfo;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.bluetooth.BluetoothAdapter;
@@ -19,25 +20,32 @@ import android.nfc.NfcAdapter;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Environment;
+import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
 import android.telephony.TelephonyManager;
 import android.view.Display;
 import android.view.WindowManager;
 
 import com.jaredrummler.android.device.DeviceName;
+import com.nabinbhandari.android.permissions.PermissionHandler;
+import com.nabinbhandari.android.permissions.Permissions;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.UUID;
 
 import github.nisrulz.easydeviceinfo.base.DeviceType;
 import github.nisrulz.easydeviceinfo.base.EasyDeviceMod;
 
 import static android.content.Context.ACTIVITY_SERVICE;
+import static android.content.Context.TELEPHONY_SERVICE;
 
 public class DeviceHardwareInfo {
 
     private Context ctxt;
     private Activity activity;
     private EasyDeviceMod easyDeviceMod;
+    private String deviceUniqueIdentifier;
 
     public DeviceHardwareInfo (Context ctxt, Activity activity){
 
@@ -112,7 +120,7 @@ public class DeviceHardwareInfo {
         AudioManager am = (AudioManager) ctxt.getSystemService(Context.AUDIO_SERVICE);
         str += "\nHeadphones attached: "+am.isWiredHeadsetOn();
 
-        str += "\nUUID: ";
+        str += "\nUUID: "+getUUID();
 
         WifiManager wifiMan = (WifiManager) ctxt.getSystemService(Context.WIFI_SERVICE);
         WifiInfo wifiInf = wifiMan.getConnectionInfo();
@@ -123,14 +131,8 @@ public class DeviceHardwareInfo {
 
         str += "\nIs simulator: "+isRunningOnEmulator();
 
-        TelephonyManager telephonyManager = (TelephonyManager) ctxt.getSystemService(Context.TELEPHONY_SERVICE);
-        try {
-            str += "\nIMEI: " + telephonyManager.getDeviceId();
-        }
-        catch (SecurityException se){
-            str += "\nIMEI: "+se.getMessage();
-        }
-        //str += "\nIMEI: "+getUniqueIMEIId(ctxt);
+
+        str += "\nIMEI: "+getDeviceIMEI();
 
         String wifiStatus = "";
         if(ctxt.getSystemService(Context.WIFI_SERVICE) == null) {
@@ -221,30 +223,61 @@ public class DeviceHardwareInfo {
         return result;
     }
 
-    public static String getUniqueIMEIId(Context context) {
-        try {
-            TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-                // TODO: Consider calling
-                //    ActivityCompat#requestPermissions
-                // here to request the missing permissions, and then overriding
-                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                //                                          int[] grantResults)
-                // to handle the case where the user grants the permission. See the documentation
-                // for ActivityCompat#requestPermissions for more details.
-                return "";
-            }
-            String imei = telephonyManager.getDeviceId();
-         //   Log.e("imei", "=" + imei);
-            if (imei != null && !imei.isEmpty()) {
-                return imei;
-            } else {
-                return android.os.Build.SERIAL;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+    public String getDeviceIMEI() {
+        String[] permissions = {Manifest.permission.READ_PHONE_STATE};
+        String rationale = "Please provide permission to detect your IMEI";
+        Permissions.Options options = new Permissions.Options()
+                .setRationaleDialogTitle("Info")
+                .setSettingsDialogTitle("Warning");
+
+        /*
+        String deviceUniqueIdentifier = null;
+        TelephonyManager tm = (TelephonyManager) ctxt.getSystemService(Context.TELEPHONY_SERVICE);
+        if (null != tm) {
+            deviceUniqueIdentifier = tm.getDeviceId();
         }
-        return "not_found";
+        if (null == deviceUniqueIdentifier || 0 == deviceUniqueIdentifier.length()) {
+            deviceUniqueIdentifier = Settings.Secure.getString(ctxt.getContentResolver(), Settings.Secure.ANDROID_ID);
+        }
+        return deviceUniqueIdentifier;
+        */
+
+       // final String deviceUniqueIdentifier;
+
+        Permissions.check(activity, permissions, rationale, options, new PermissionHandler() {
+            @SuppressLint("MissingPermission")
+            @Override
+            public void onGranted() {
+                TelephonyManager tm = (TelephonyManager) ctxt.getSystemService(TELEPHONY_SERVICE);
+                if (null != tm) {
+                    deviceUniqueIdentifier = tm.getDeviceId();
+                }
+                if (null == deviceUniqueIdentifier || 0 == deviceUniqueIdentifier.length()) {
+                    deviceUniqueIdentifier = Settings.Secure.getString(ctxt.getContentResolver(), Settings.Secure.ANDROID_ID);
+                }
+            }
+
+            @Override
+            public void onDenied(Context context, ArrayList<String> deniedPermissions) {
+                deviceUniqueIdentifier = "NULL";
+            }
+        });
+
+        return deviceUniqueIdentifier;
     }
 
+    public String getUUID(){
+        TelephonyManager tm = (TelephonyManager) ctxt.getSystemService(TELEPHONY_SERVICE);
+        @SuppressLint("MissingPermission") String tmSerial = tm.getSimSerialNumber();
+        @SuppressLint("MissingPermission") String tmDeviceId = tm.getDeviceId();
+        String androidId = android.provider.Settings.Secure.getString(ctxt.getContentResolver(),
+                android.provider.Settings.Secure.ANDROID_ID);
+        if (tmSerial  == null) tmSerial   = "1";
+        if (tmDeviceId== null) tmDeviceId = "1";
+        if (androidId == null) androidId  = "1";
+        UUID deviceUuid = new UUID(androidId.hashCode(),
+                ((long)tmDeviceId.hashCode() << 32) | tmSerial.hashCode());
+        String uniqueId = deviceUuid.toString();
+        return uniqueId;
+    }
 }
